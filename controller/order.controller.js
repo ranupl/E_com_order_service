@@ -5,11 +5,54 @@ const {
   fetchOrderById,
   changeOrderStatus,
 } = require('../service/order.service');
+const { Kafka } = require('kafkajs');
 
+// Kafka configuration
+const kafka = new Kafka({
+  clientId: 'order-service',
+  brokers: ['localhost:2009'], 
+});
+
+const producer = kafka.producer();
+
+const sendNotification = async (topics, message) => {
+  await producer.connect();
+  try {
+    const messages = topics.map((topic) => ({
+      topic,
+      messages: [{ value: JSON.stringify(message) }],
+    }));
+    await Promise.all(
+      messages.map((msg) => producer.send(msg))
+    );
+    console.log('Notifications sent successfully');
+  } catch (error) {
+    console.error('Error sending notifications:', error);
+  } finally {
+    await producer.disconnect();
+  }
+};
+
+// completd order
 const completeOrder = async (req, res) => {
   const orderData = req.body;
   try {
     const order = await placeOrder(orderData);
+    
+    // Notification message structure
+    const notificationMessage = {
+      userId: orderData.userId,
+      email: 'ranupl542011@gmail.com',
+      status: 'Order Completed',
+      timestamp: new Date().toISOString(),
+    };
+
+    // Send notifications to multiple topics
+    await sendNotification(
+      ['email_notification', 'sms_notification', 'whatsapp_notification'],
+      notificationMessage
+    );
+
     res.status(201).json({ message: 'Order placed successfully', order });
   } catch (error) {
     res.status(400).json({ error: error.message });

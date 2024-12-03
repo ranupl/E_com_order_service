@@ -3,7 +3,6 @@ const app = express();
 require('dotenv').config({ path: './config/.env' });
 const cors = require("cors");
 const PORT = process.env.PORT || 5004;
-const session = require('express-session');
 const orderRoutes = require("./routes/order.routes");
 
 app.use(express.json());
